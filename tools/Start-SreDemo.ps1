@@ -58,7 +58,7 @@ if (Test-Path $stateFile) {
 # ── Step 1: Read Terraform outputs ────────────────────────────────────────────
 Write-Host ""
 Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host "  Azure SRE Agent Demo — Start" -ForegroundColor Cyan
+Write-Host "  Azure SRE Agent Demo - Start" -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Reading Terraform outputs..." -ForegroundColor Yellow
@@ -117,7 +117,7 @@ while (-not $ready -and $waited -lt $maxWait) {
 }
 
 if (-not $ready) {
-    Write-Host "WARNING: API health check timed out after ${maxWait}s — proceeding anyway." -ForegroundColor Yellow
+    Write-Host "WARNING: API health check timed out after ${maxWait}s - proceeding anyway." -ForegroundColor Yellow
 }
 
 # ── Step 4: Burst load to generate immediate errors ───────────────────────────
@@ -132,8 +132,8 @@ try {
         -ErrorAction Stop
     Write-Host "  [OK] Load burst complete: $($result | ConvertTo-Json -Compress)" -ForegroundColor Green
 } catch {
-    # Errors are expected — the bug causes the API to return 500s
-    Write-Host "  [OK] Errors returned from API — this is expected with the bug active." -ForegroundColor Green
+    # Errors are expected - the bug causes the API to return 500s
+    Write-Host "  [OK] Errors returned from API - this is expected with the bug active." -ForegroundColor Green
 }
 
 # ── Step 5: Build deep-link URLs ──────────────────────────────────────────────
@@ -150,7 +150,7 @@ Write-Host "============================================================" -Foreg
 Write-Host ""
 Write-Host "PRESENTER STEPS:" -ForegroundColor Yellow
 Write-Host ""
-Write-Host "  [1] Open Application Insights — Failures blade:" -ForegroundColor Cyan
+Write-Host "  [1] Open Application Insights - Failures blade:" -ForegroundColor Cyan
 Write-Host "      $appInsightsFailuresUrl" -ForegroundColor White
 Write-Host ""
 Write-Host "      Show: error rate spike, exception type ($chosenBug)," -ForegroundColor Gray
@@ -172,10 +172,10 @@ if ($sreAgentPortalUrl) {
 Write-Host "  [3] Open Azure DevOps Boards:" -ForegroundColor Cyan
 Write-Host "      Show the auto-created bug with SRE Agent investigation notes" -ForegroundColor Gray
 Write-Host ""
-Write-Host "  [4] Open GitHub — Copilot coding agent:" -ForegroundColor Cyan
+Write-Host "  [4] Open GitHub - Copilot coding agent:" -ForegroundColor Cyan
 Write-Host "      Show Copilot reading the ADO bug, creating a fix branch, opening PR" -ForegroundColor Gray
 Write-Host ""
-Write-Host "  [5] Review and merge the PR — this is the human gate." -ForegroundColor Cyan
+Write-Host "  [5] Review and merge the PR - this is the human gate." -ForegroundColor Cyan
 Write-Host "      CI/CD deploys the fix; errors stop automatically." -ForegroundColor Gray
 Write-Host ""
 Write-Host "============================================================" -ForegroundColor Green

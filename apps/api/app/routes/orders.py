@@ -7,6 +7,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from app.logger import log_exception
 from app.stores.order_store import OrderStore
 
 logger = logging.getLogger(__name__)
@@ -65,7 +66,19 @@ async def create_order(req: CreateOrderRequest):
         "notes": req.notes,
         "createdAt": datetime.now(timezone.utc).isoformat(),
     }
-    await order_store.write(order)
+    try:
+        await order_store.write(order)
+    except Exception as exc:
+        log_exception(
+            logger,
+            "Failed to persist new order",
+            exc,
+            operation="create_order",
+            order_id=order_id,
+            customer_id=req.customer_id,
+            line_item_count=len(req.line_items),
+        )
+        raise
     logger.info("Order created: %s for customer %s", order_id, req.customer_id)
     return order
 
@@ -99,6 +112,17 @@ async def process_order(order_id: str):
             "status": "processed",
             "invoice": {"lines": invoice_lines, "total": order_total},
         }
+    except Exception as exc:
+        log_exception(
+            logger,
+            "Failed to process order",
+            exc,
+            operation="process_order",
+            order_id=order_id,
+            line_item_count=len(order.get("lineItems", [])),
+            customer_id=order.get("customerId"),
+        )
+        raise
     finally:
         duration = time.monotonic() - start
         logger.info("Order %s process request completed in %.3fs", order_id, duration)

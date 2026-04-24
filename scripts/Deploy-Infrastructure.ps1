@@ -49,6 +49,7 @@ environment_name = "$Environment"
 project_name     = "sre"
 resource_token   = "$resourceToken"
 location         = "$Location"
+enable_sre_agent = true
 "@
 
     $tfvarsPath = Join-Path $absolutePath "terraform.tfvars"

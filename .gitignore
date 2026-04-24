@@ -24,3 +24,4 @@ Thumbs.db
 .vscode/settings.json
 *.swp
 project.md
+infra/tfplan

@@ -66,7 +66,6 @@ resource "azurerm_cosmosdb_sql_container" "customers" {
   indexing_policy {
     indexing_mode = "consistent"
 
-    included_path { path = "/id/?" }
     included_path { path = "/name/?" }
     excluded_path { path = "/*" }
   }

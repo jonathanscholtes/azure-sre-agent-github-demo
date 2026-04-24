@@ -1,4 +1,4 @@
-# Azure SRE Demo — Main Deployment Orchestrator
+# Azure SRE Demo - Main Deployment Orchestrator
 #
 # Usage:
 #   Deploy:               .\deploy.ps1 -Subscription '<name-or-id>'
@@ -28,7 +28,7 @@ Import-Module (Join-Path $scriptsDir "common/DeploymentFunctions.psm1") -Force
 Write-Host @"
 
 ============================================================
-  Azure SRE Closed-Loop Demo — Deployment Orchestrator
+  Azure SRE Closed-Loop Demo - Deployment Orchestrator
 ============================================================
 
 "@ -ForegroundColor Cyan
@@ -104,7 +104,7 @@ if ($Destroy -or $SkipBootstrap) {
             }
         }
         if (-not $ready) {
-            Write-Host "WARNING: Role assignment may not have propagated after ${maxWait}s — continuing." -ForegroundColor Yellow
+            Write-Host "WARNING: Role assignment may not have propagated after ${maxWait}s - continuing." -ForegroundColor Yellow
         } else {
             Write-Host "  Role assignment effective after ${waited}s." -ForegroundColor Green
         }
@@ -209,10 +209,10 @@ if ($apiReady) {
         $seed = Invoke-RestMethod -Uri "$backendUrl/api/demo/seed" -Method POST -TimeoutSec 30 -ErrorAction Stop
         Write-Host "  [OK] $($seed.message)" -ForegroundColor Green
     } catch {
-        Write-Host "  [WARN] Seed request failed: $_ — run POST $backendUrl/api/demo/seed manually" -ForegroundColor Yellow
+        Write-Host "  [WARN] Seed request failed: $_ - run POST $backendUrl/api/demo/seed manually" -ForegroundColor Yellow
     }
 } else {
-    Write-Host "  [WARN] API did not become healthy — seed manually: POST $backendUrl/api/demo/seed" -ForegroundColor Yellow
+    Write-Host "  [WARN] API did not become healthy - seed manually: POST $backendUrl/api/demo/seed" -ForegroundColor Yellow
 }
 
 # --------------------------------------------------------------------------
@@ -253,7 +253,7 @@ Write-Host "  1. Inject a bug:   .\tools\Invoke-ChaosBug.ps1 -ContainerRegistryN
 Write-Host "  2. Generate load:  Invoke-RestMethod '$backendUrl/api/demo/simulate-load' -Method POST" -ForegroundColor White
 Write-Host "  3. Watch errors appear in Application Insights '$appInsightsName'" -ForegroundColor White
 Write-Host "  4. SRE Agent investigates and files an ADO bug automatically" -ForegroundColor White
-Write-Host "  5. GitHub Copilot opens a fix PR — review and merge" -ForegroundColor White
+  Write-Host "  5. GitHub Copilot opens a fix PR - review and merge" -ForegroundColor White
 Write-Host "  6. Revert bug:     .\tools\Invoke-ChaosBug.ps1 -Revert -ContainerRegistryName $acrName -ResourceGroupName $resourceGroupName -BackendAppName $backendAppName" -ForegroundColor White
 Write-Host ""
 Write-Host "To seed demo data manually:" -ForegroundColor Yellow

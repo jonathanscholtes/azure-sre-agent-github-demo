@@ -34,6 +34,13 @@ class CreateOrderRequest(BaseModel):
 
 def build_line_item_summary(item: dict) -> dict:
     """Compute per-item totals and effective unit cost for invoice reconciliation."""
+    required_keys = {"sku", "name", "unit_price", "quantity"}
+    missing = required_keys - item.keys()
+    if missing:
+        raise ValueError(
+            f"Line item missing required fields: {sorted(missing)}. "
+            f"Received keys: {sorted(item.keys())}"
+        )
     total = item["unit_price"] * item["quantity"]
     unit_cost = total / item["quantity"] if item["quantity"] != 0 else 0.0
     return {
@@ -87,7 +94,10 @@ async def process_order(order_id: str):
 
     start = time.monotonic()
     try:
-        invoice_lines = [build_line_item_summary(item) for item in order.get("lineItems", [])]
+        try:
+            invoice_lines = [build_line_item_summary(item) for item in order.get("lineItems", [])]
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
         order_total = round(sum(line["line_total"] for line in invoice_lines), 2)
         order["status"] = "processed"
         order["invoice"] = {"lines": invoice_lines, "total": order_total}

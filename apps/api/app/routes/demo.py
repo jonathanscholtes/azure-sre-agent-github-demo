@@ -2,7 +2,7 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from app.routes.orders import build_line_item_summary, order_store
 from app.stores.customer_store import CustomerStore
@@ -86,7 +86,10 @@ async def simulate_load(orders: int = 5):
             "createdAt": datetime.now(timezone.utc).isoformat(),
         }
         await order_store.write(order)
-        invoice_lines = [build_line_item_summary(item) for item in line_items]
+        try:
+            invoice_lines = [build_line_item_summary(item) for item in line_items]
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
         total = round(sum(line["line_total"] for line in invoice_lines), 2)
         order["status"] = "processed"
         order["invoice"] = {"lines": invoice_lines, "total": total}

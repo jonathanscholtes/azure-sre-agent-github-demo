@@ -1,0 +1,15 @@
+# Terraform Configuration Example
+# Copy this file to terraform.tfvars and update with your values
+
+# Required Variables
+subscription_id  = "00000000-0000-0000-0000-000000000000"  # Your Azure subscription ID
+environment_name = "dev"                                     # Environment: dev, test, prod, etc.
+project_name     = "sre"                                    # Project name (used in resource naming)
+resource_token   = ""                                       # Unique suffix — leave empty to auto-generate
+location         = "eastus2"                                # Azure region
+                                                            # SRE Agent requires: eastus2, swedencentral, uksouth, australiaeast
+
+# SRE Agent (set to true to deploy the Azure SRE Agent)
+enable_sre_agent       = true
+sre_agent_name         = "sre-agent"
+sre_agent_access_level = "High"   # High = Reader + Contributor; Low = Reader only

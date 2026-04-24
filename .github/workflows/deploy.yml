@@ -1,0 +1,160 @@
+name: Deploy SRE Demo
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/**"
+      - "infra/**"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+    inputs:
+      location:
+        description: Azure region
+        required: false
+        default: eastus2
+      skip_infra:
+        description: Skip Terraform (containers only)
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  id-token: write   # OIDC token for Azure login
+  contents: read
+
+env:
+  LOCATION: ${{ github.event.inputs.location || 'eastus2' }}
+  ENVIRONMENT: dev
+  PROJECT_NAME: sre
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # ── Terraform ────────────────────────────────────────────────────────
+      # Setup and Init always run so outputs can be read from existing state
+      # even when skip_infra=true (containers-only redeploy).
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.9"
+
+      - name: Terraform Init
+        working-directory: infra
+        run: |
+          terraform init \
+            -backend-config="storage_account_name=${{ secrets.TF_STATE_STORAGE_ACCOUNT }}" \
+            -backend-config="resource_group_name=rg-tfstate-sre" \
+            -backend-config="container_name=tfstate" \
+            -backend-config="key=sre-demo.tfstate" \
+            -backend-config="use_azuread_auth=true"
+
+      - name: Terraform Plan
+        if: ${{ github.event.inputs.skip_infra != 'true' }}
+        working-directory: infra
+        run: |
+          terraform plan \
+            -var="subscription_id=${{ secrets.AZURE_SUBSCRIPTION_ID }}" \
+            -var="environment_name=${{ env.ENVIRONMENT }}" \
+            -var="project_name=${{ env.PROJECT_NAME }}" \
+            -var="location=${{ env.LOCATION }}" \
+            -out=tfplan
+
+      - name: Terraform Apply
+        if: ${{ github.event.inputs.skip_infra != 'true' }}
+        working-directory: infra
+        run: terraform apply -auto-approve tfplan
+
+      - name: Read Terraform Outputs
+        id: tf_outputs
+        working-directory: infra
+        run: |
+          echo "acr_name=$(terraform output -raw container_registry_name)"        >> "$GITHUB_OUTPUT"
+          echo "rg_name=$(terraform output -raw resource_group_name)"             >> "$GITHUB_OUTPUT"
+          echo "api_app=$(terraform output -raw backend_container_app_name)"      >> "$GITHUB_OUTPUT"
+          echo "loadgen_job=$(terraform output -raw load_generator_job_name)"     >> "$GITHUB_OUTPUT"
+          echo "api_url=$(terraform output -raw backend_container_app_url)"       >> "$GITHUB_OUTPUT"
+
+      # ── Container Images ─────────────────────────────────────────────────
+      - name: Build & Push sre-api
+        run: |
+          az acr build \
+            --resource-group "${{ steps.tf_outputs.outputs.rg_name }}" \
+            --registry       "${{ steps.tf_outputs.outputs.acr_name }}" \
+            --file           apps/api/Dockerfile \
+            --image          sre-api:${{ github.sha }} \
+            --image          sre-api:latest \
+            apps/api
+
+      - name: Build & Push sre-loadgen
+        run: |
+          az acr build \
+            --resource-group "${{ steps.tf_outputs.outputs.rg_name }}" \
+            --registry       "${{ steps.tf_outputs.outputs.acr_name }}" \
+            --file           apps/loadgen/Dockerfile \
+            --image          sre-loadgen:${{ github.sha }} \
+            --image          sre-loadgen:latest \
+            apps/loadgen
+
+      - name: Update Container App image
+        run: |
+          az containerapp update \
+            --name           "${{ steps.tf_outputs.outputs.api_app }}" \
+            --resource-group "${{ steps.tf_outputs.outputs.rg_name }}" \
+            --image          "${{ steps.tf_outputs.outputs.acr_name }}.azurecr.io/sre-api:${{ github.sha }}"
+
+      - name: Update Load Generator Job image
+        run: |
+          az containerapp job update \
+            --name           "${{ steps.tf_outputs.outputs.loadgen_job }}" \
+            --resource-group "${{ steps.tf_outputs.outputs.rg_name }}" \
+            --image          "${{ steps.tf_outputs.outputs.acr_name }}.azurecr.io/sre-loadgen:${{ github.sha }}"
+
+      # ── Seed Demo Data ───────────────────────────────────────────────────
+      - name: Wait for API health
+        run: |
+          API_URL="${{ steps.tf_outputs.outputs.api_url }}"
+          for i in $(seq 1 12); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$API_URL/health" || true)
+            if [ "$STATUS" = "200" ]; then
+              echo "API is healthy"
+              exit 0
+            fi
+            echo "Attempt $i: API returned $STATUS, retrying in 10s..."
+            sleep 10
+          done
+          echo "WARNING: API did not become healthy within 120s"
+
+      - name: Seed demo data
+        run: |
+          API_URL="${{ steps.tf_outputs.outputs.api_url }}"
+          curl -sf -X POST "$API_URL/api/demo/seed" || \
+            echo "WARNING: seed endpoint failed — run manually: POST $API_URL/api/demo/seed"
+
+      # ── Summary ──────────────────────────────────────────────────────────
+      - name: Deployment summary
+        run: |
+          API_URL="${{ steps.tf_outputs.outputs.api_url }}"
+          echo "## SRE Demo Deployment" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Resource | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|----------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| API URL | $API_URL |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| API Docs | $API_URL/docs |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Image tag | \`${{ github.sha }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**SRE Demo:** errors are generated every 5 min by the load generator job." >> "$GITHUB_STEP_SUMMARY"
+          echo "Open Application Insights to see the KeyError / AttributeError traces." >> "$GITHUB_STEP_SUMMARY"

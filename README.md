@@ -95,8 +95,8 @@ Bug injected → Application Insights detects errors
 ### 1. Clone and initialize
 
 ```powershell
-git clone https://github.com/<your-org>/Azure-SRE-GitHub-Copilot-Demo
-cd Azure-SRE-GitHub-Copilot-Demo
+git clone https://github.com/jonathanscholtes/azure-sre-agent-github-demo
+cd azure-sre-agent-github-demo
 az login
 ```
 
@@ -159,6 +159,17 @@ After the first `terraform apply`:
 1. Install the **Azure Boards** GitHub App on this repository
 2. In ADO, install the **GitHub Copilot for Azure DevOps** extension
 3. Configure it to assign new bugs to the Copilot coding agent
+
+### 6. Enable branch protection on `main` (GitHub repo settings)
+
+This enforces the human gate — the Copilot fix PR cannot be merged without a review.
+
+1. Go to **Settings → Branches → Add branch ruleset**
+2. Target branch: `main`
+3. Enable:
+   - **Require a pull request before merging** (1 required approval)
+   - **Require status checks to pass** → add `Validate` (from `validate.yml`)
+   - **Block force pushes**
 
 ---
 

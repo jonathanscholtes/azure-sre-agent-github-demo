@@ -1,0 +1,26 @@
+# Chaos bug state — tracks which bug is currently injected; never commit
+.chaos-state
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Environment / secrets
+.env
+*.env
+!scripts/sample.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/settings.json
+*.swp
+project.md

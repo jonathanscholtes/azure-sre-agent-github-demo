@@ -12,10 +12,10 @@
 
 .PARAMETER Bug
     Which bug to introduce. Defaults to "Random".
-      KeyError      — renames field key in build_line_item_summary:
+      KeyError      - renames field key in build_line_item_summary:
                       item["unit_price"] -> item["price"]
                       Effect: KeyError on every POST /api/orders/{id}/process
-      AttributeError — accesses wrong attribute in create_order:
+      AttributeError - accesses wrong attribute in create_order:
                        req.line_items -> req.lineItems
                        Effect: AttributeError on every POST /api/orders
 
@@ -49,9 +49,20 @@
         -ResourceGroupName     rg-sre-dev-eastus2-abc12345 `
         -BackendAppName        ca-api-sre-abc12345
 
+.PARAMETER SkipDeploy
+    Patch the source but skip the ACR build and Container App update.
+    Use this when you want GitHub Actions CI/CD to handle the deployment instead.
+
 .EXAMPLE
     # Apply a specific bug without redeploying (push to git to trigger CI instead)
     .\tools\Invoke-ChaosBug.ps1 -Bug KeyError
+
+.EXAMPLE
+    # Apply a bug and skip ACR deploy (let GitHub Actions CI/CD deploy it)
+    .\tools\Invoke-ChaosBug.ps1 -SkipDeploy `
+        -ContainerRegistryName acrmyacr `
+        -ResourceGroupName     rg-sre-dev-eastus2-abc12345 `
+        -BackendAppName        ca-api-sre-abc12345
 #>
 
 param (
@@ -60,6 +71,8 @@ param (
     [string]$Bug = "Random",
 
     [switch]$Revert,
+
+    [switch]$SkipDeploy,
 
     [Parameter(Mandatory=$false)]
     [string]$ContainerRegistryName = "",
@@ -83,7 +96,7 @@ $ordersFile = Join-Path $repoRoot "apps\api\app\routes\orders.py"
 
 # ── Bug catalogue ──────────────────────────────────────────────────────────────
 # Each entry: File, Clean (original text), Buggy (patched text), Description, ErrorType
-# Bugs are placed in route handlers — outside the store's try/except — so they
+# Bugs are placed in route handlers - outside the store's try/except - so they
 # always propagate as HTTP 500 and appear in Application Insights.
 
 $bugCatalogue = [ordered]@{
@@ -162,7 +175,7 @@ function Invoke-AcrDeploy {
     Write-Step "[OK] Deployed $imageRef to $BackendAppName" "Green"
 }
 
-$canDeploy = $ContainerRegistryName -and $ResourceGroupName -and $BackendAppName
+$canDeploy = ($ContainerRegistryName -and $ResourceGroupName -and $BackendAppName) -and (-not $SkipDeploy)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # REVERT
@@ -184,7 +197,7 @@ if ($Revert) {
     $content = [System.IO.File]::ReadAllText($def.File)
 
     if (-not $content.Contains($def.Buggy)) {
-        Write-Host "  Buggy pattern not found — file may already be clean." -ForegroundColor Yellow
+        Write-Host "  Buggy pattern not found - file may already be clean." -ForegroundColor Yellow
     } else {
         $clean = $content.Replace($def.Buggy, $def.Clean)
         [System.IO.File]::WriteAllText($def.File, $clean, [System.Text.Encoding]::UTF8)
@@ -198,7 +211,7 @@ if ($Revert) {
         Invoke-AcrDeploy
         Write-Step "`nClean image deployed. Errors should stop within ~1 minute." "Green"
     } else {
-        Write-Host "`nDeploy skipped — push to git or run Deploy-Containers.ps1 to apply." -ForegroundColor Gray
+        Write-Host "`nDeploy skipped - push to git or run Deploy-Containers.ps1 to apply." -ForegroundColor Gray
     }
 
     exit 0
@@ -253,7 +266,7 @@ if ($canDeploy) {
     Write-Host "============================================================" -ForegroundColor Red
 } else {
     Write-Host ""
-    Write-Host "Deploy skipped — no ACR/RG/App params provided." -ForegroundColor Gray
+    Write-Host "Deploy skipped - no ACR/RG/App params provided." -ForegroundColor Gray
     Write-Host "Commit and push, or run:" -ForegroundColor Gray
     Write-Host "  .\scripts\Deploy-Containers.ps1 -Images sre-api ..." -ForegroundColor Gray
 }

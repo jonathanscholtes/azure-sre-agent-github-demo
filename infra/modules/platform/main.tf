@@ -1,5 +1,5 @@
 locals {
-  container_registry_name       = "cr${var.project_name}${var.resource_token}"
+  container_registry_name        = "cr${var.project_name}${var.resource_token}"
   container_app_environment_name = "cae-${var.project_name}-${var.environment_name}-${var.resource_token}"
 }
 

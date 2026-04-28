@@ -15,8 +15,9 @@ def test_build_line_item_summary_basic():
     result = build_line_item_summary(item)
     assert result["unit_price"] == 49.99
     assert result["quantity"] == 2
-    assert result["line_total"] == round(49.99 * 2, 2)
-    assert result["unit_cost"] == 49.99
+    expected_line_total = round(49.99 * 2, 2)
+    assert result["line_total"] == expected_line_total
+    assert result["unit_cost"] == round(expected_line_total / 2, 2)
     assert result["sku"] == "WIDGET-001"
     assert result["name"] == "Widget A"
 
@@ -34,6 +35,16 @@ def test_build_line_item_summary_zero_quantity():
     result = build_line_item_summary(item)
     assert result["line_total"] == 0.0
     assert result["unit_cost"] == 0.0
+
+
+def test_build_line_item_summary_unit_cost_calculation():
+    """unit_cost equals line_total / quantity for non-zero quantity."""
+    item = {"sku": "WIDGET-001", "name": "Widget A", "unit_price": 15.00, "quantity": 3}
+    result = build_line_item_summary(item)
+    expected_line_total = round(15.00 * 3, 2)
+    expected_unit_cost = round(expected_line_total / 3, 2)
+    assert result["line_total"] == expected_line_total
+    assert result["unit_cost"] == expected_unit_cost
 
 
 def test_build_line_item_summary_rounding():

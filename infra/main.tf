@@ -92,12 +92,12 @@ module "sre_agent" {
   count  = var.enable_sre_agent ? 1 : 0
   source = "./modules/sre-agent"
 
-  agent_name                             = var.sre_agent_name
-  location                               = var.location
-  resource_group_name                    = azurerm_resource_group.main.name
-  subscription_id                        = var.subscription_id
-  resource_token                         = local.resource_token
-  access_level                           = var.sre_agent_access_level
+  agent_name          = var.sre_agent_name
+  location            = var.location
+  resource_group_name = azurerm_resource_group.main.name
+  subscription_id     = var.subscription_id
+  resource_token      = local.resource_token
+  access_level        = var.sre_agent_access_level
   # Always include the deployment resource group so the agent can observe the
   # Container App, Cosmos DB, and Application Insights that live there.
   # Additional resource groups can be appended via sre_agent_target_resource_groups.

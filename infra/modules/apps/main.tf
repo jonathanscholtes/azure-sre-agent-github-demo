@@ -1,7 +1,7 @@
 locals {
-  backend_container_app_name  = "ca-api-${var.project_name}-${var.resource_token}"
-  load_generator_job_name     = "job-loadgen-${var.project_name}-${var.resource_token}"
-  registry_server             = "${var.container_registry_name}.azurecr.io"
+  backend_container_app_name = "ca-api-${var.project_name}-${var.resource_token}"
+  load_generator_job_name    = "job-loadgen-${var.project_name}-${var.resource_token}"
+  registry_server            = "${var.container_registry_name}.azurecr.io"
 }
 
 data "azurerm_user_assigned_identity" "main" {

@@ -32,8 +32,10 @@ provider "azurerm" {
   }
   subscription_id     = var.subscription_id
   storage_use_azuread = true
+  use_oidc            = true
 }
 
 provider "azapi" {
   subscription_id = var.subscription_id
+  use_oidc        = true
 }

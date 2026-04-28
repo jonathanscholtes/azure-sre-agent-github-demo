@@ -12,6 +12,12 @@ permissions:
   id-token: write
   contents: read
 
+env:
+  ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  ARM_USE_OIDC: "true"
+
 jobs:
   deploy:
     name: Deploy
@@ -28,11 +34,32 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.9"
+          terraform_wrapper: false
+
+      - name: Terraform Init
+        working-directory: infra
+        run: |
+          terraform init \
+            -backend-config="storage_account_name=${{ secrets.TF_STATE_STORAGE_ACCOUNT }}"
+
+      - name: Read Terraform Outputs
+        id: tf
+        working-directory: infra
+        run: |
+          echo "rg=$(terraform output -raw resource_group_name)"             >> "$GITHUB_OUTPUT"
+          echo "acr=$(terraform output -raw container_registry_name)"        >> "$GITHUB_OUTPUT"
+          echo "app=$(terraform output -raw backend_container_app_name)"     >> "$GITHUB_OUTPUT"
+          echo "job=$(terraform output -raw load_generator_job_name)"        >> "$GITHUB_OUTPUT"
+
       - name: Build & Push sre-api
         run: |
           az acr build \
-            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
-            --registry       "${{ secrets.ACR_NAME }}" \
+            --resource-group "${{ steps.tf.outputs.rg }}" \
+            --registry       "${{ steps.tf.outputs.acr }}" \
             --file           apps/api/Dockerfile \
             --image          sre-api:${{ github.sha }} \
             --image          sre-api:latest \
@@ -41,23 +68,23 @@ jobs:
       - name: Build & Push sre-loadgen
         run: |
           az acr build \
-            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
-            --registry       "${{ secrets.ACR_NAME }}" \
+            --resource-group "${{ steps.tf.outputs.rg }}" \
+            --registry       "${{ steps.tf.outputs.acr }}" \
             --file           apps/loadgen/Dockerfile \
             --image          sre-loadgen:${{ github.sha }} \
             --image          sre-loadgen:latest \
             apps/loadgen
 
-      - name: Update Container App image
+      - name: Update Container App
         run: |
           az containerapp update \
-            --name           "${{ secrets.CONTAINER_APP_NAME }}" \
-            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
-            --image          "${{ secrets.ACR_NAME }}.azurecr.io/sre-api:${{ github.sha }}"
+            --name           "${{ steps.tf.outputs.app }}" \
+            --resource-group "${{ steps.tf.outputs.rg }}" \
+            --image          "${{ steps.tf.outputs.acr }}.azurecr.io/sre-api:${{ github.sha }}"
 
-      - name: Update Load Generator Job image
+      - name: Update Load Generator Job
         run: |
           az containerapp job update \
-            --name           "${{ secrets.LOADGEN_JOB_NAME }}" \
-            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
-            --image          "${{ secrets.ACR_NAME }}.azurecr.io/sre-loadgen:${{ github.sha }}"
+            --name           "${{ steps.tf.outputs.job }}" \
+            --resource-group "${{ steps.tf.outputs.rg }}" \
+            --image          "${{ steps.tf.outputs.acr }}.azurecr.io/sre-loadgen:${{ github.sha }}"

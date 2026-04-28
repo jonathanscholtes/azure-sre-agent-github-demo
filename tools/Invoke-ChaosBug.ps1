@@ -49,9 +49,20 @@
         -ResourceGroupName     rg-sre-dev-eastus2-abc12345 `
         -BackendAppName        ca-api-sre-abc12345
 
+.PARAMETER SkipDeploy
+    Patch the source but skip the ACR build and Container App update.
+    Use this when you want GitHub Actions CI/CD to handle the deployment instead.
+
 .EXAMPLE
     # Apply a specific bug without redeploying (push to git to trigger CI instead)
     .\tools\Invoke-ChaosBug.ps1 -Bug KeyError
+
+.EXAMPLE
+    # Apply a bug and skip ACR deploy (let GitHub Actions CI/CD deploy it)
+    .\tools\Invoke-ChaosBug.ps1 -SkipDeploy `
+        -ContainerRegistryName acrmyacr `
+        -ResourceGroupName     rg-sre-dev-eastus2-abc12345 `
+        -BackendAppName        ca-api-sre-abc12345
 #>
 
 param (
@@ -60,6 +71,8 @@ param (
     [string]$Bug = "Random",
 
     [switch]$Revert,
+
+    [switch]$SkipDeploy,
 
     [Parameter(Mandatory=$false)]
     [string]$ContainerRegistryName = "",
@@ -162,7 +175,7 @@ function Invoke-AcrDeploy {
     Write-Step "[OK] Deployed $imageRef to $BackendAppName" "Green"
 }
 
-$canDeploy = $ContainerRegistryName -and $ResourceGroupName -and $BackendAppName
+$canDeploy = ($ContainerRegistryName -and $ResourceGroupName -and $BackendAppName) -and (-not $SkipDeploy)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # REVERT

@@ -22,11 +22,19 @@
 .PARAMETER LoadCount
     Number of orders to create+process in the initial error burst. Defaults to 20.
 
+.PARAMETER SkipDeploy
+    Patch the source but skip the ACR build and Container App update.
+    Use this to test the GitHub Actions CI/CD workflow: commit and push after
+    running this script and let the pipeline handle the deployment.
+
 .EXAMPLE
     .\tools\Start-SreDemo.ps1
 
 .EXAMPLE
     .\tools\Start-SreDemo.ps1 -Bug KeyError -LoadCount 30
+
+.EXAMPLE
+    .\tools\Start-SreDemo.ps1 -SkipDeploy
 #>
 
 param (
@@ -35,7 +43,9 @@ param (
     [string]$Bug = "Random",
 
     [Parameter(Mandatory=$false)]
-    [int]$LoadCount = 20
+    [int]$LoadCount = 20,
+
+    [switch]$SkipDeploy
 )
 
 Set-StrictMode -Version Latest
@@ -89,7 +99,8 @@ Write-Host "Injecting bug into API..." -ForegroundColor Red
     -Bug                   $Bug `
     -ContainerRegistryName $acrName `
     -ResourceGroupName     $resourceGroupName `
-    -BackendAppName        $backendAppName
+    -BackendAppName        $backendAppName `
+    -SkipDeploy:$SkipDeploy
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Bug injection failed." -ForegroundColor Red
@@ -99,41 +110,46 @@ if ($LASTEXITCODE -ne 0) {
 # Read back which bug was chosen (Invoke-ChaosBug writes .chaos-state)
 $chosenBug = (Get-Content $stateFile -Raw | ConvertFrom-Json).Bug
 
-# ── Step 3: Wait for new revision to become healthy ───────────────────────────
-Write-Host ""
-Write-Host "Waiting for new revision to become healthy..." -ForegroundColor Yellow
-$maxWait = 120; $waited = 0; $interval = 10; $ready = $false
+if ($SkipDeploy) {
+    Write-Host ""
+    Write-Host "SkipDeploy: source patched. Commit and push to trigger GitHub Actions CI/CD." -ForegroundColor Yellow
+} else {
+    # ── Step 3: Wait for new revision to become healthy ───────────────────────
+    Write-Host ""
+    Write-Host "Waiting for new revision to become healthy..." -ForegroundColor Yellow
+    $maxWait = 120; $waited = 0; $interval = 10; $ready = $false
 
-while (-not $ready -and $waited -lt $maxWait) {
-    try {
-        $health = Invoke-RestMethod -Uri "$backendUrl/health" -Method GET -TimeoutSec 8 -ErrorAction Stop
-        if ($health.status -eq "healthy") { $ready = $true }
-    } catch { }
-    if (-not $ready) {
-        Write-Host "  Still starting... (${waited}s)" -ForegroundColor Gray
-        Start-Sleep -Seconds $interval
-        $waited += $interval
+    while (-not $ready -and $waited -lt $maxWait) {
+        try {
+            $health = Invoke-RestMethod -Uri "$backendUrl/health" -Method GET -TimeoutSec 8 -ErrorAction Stop
+            if ($health.status -eq "healthy") { $ready = $true }
+        } catch { }
+        if (-not $ready) {
+            Write-Host "  Still starting... (${waited}s)" -ForegroundColor Gray
+            Start-Sleep -Seconds $interval
+            $waited += $interval
+        }
     }
-}
 
-if (-not $ready) {
-    Write-Host "WARNING: API health check timed out after ${maxWait}s - proceeding anyway." -ForegroundColor Yellow
-}
+    if (-not $ready) {
+        Write-Host "WARNING: API health check timed out after ${maxWait}s - proceeding anyway." -ForegroundColor Yellow
+    }
 
-# ── Step 4: Burst load to generate immediate errors ───────────────────────────
-Write-Host ""
-Write-Host "Generating $LoadCount orders to produce errors in Application Insights..." -ForegroundColor Yellow
+    # ── Step 4: Burst load to generate immediate errors ───────────────────────
+    Write-Host ""
+    Write-Host "Generating $LoadCount orders to produce errors in Application Insights..." -ForegroundColor Yellow
 
-try {
-    $result = Invoke-RestMethod `
-        -Uri     "$backendUrl/api/demo/simulate-load?orders=$LoadCount" `
-        -Method  POST `
-        -TimeoutSec 60 `
-        -ErrorAction Stop
-    Write-Host "  [OK] Load burst complete: $($result | ConvertTo-Json -Compress)" -ForegroundColor Green
-} catch {
-    # Errors are expected - the bug causes the API to return 500s
-    Write-Host "  [OK] Errors returned from API - this is expected with the bug active." -ForegroundColor Green
+    try {
+        $result = Invoke-RestMethod `
+            -Uri     "$backendUrl/api/demo/simulate-load?orders=$LoadCount" `
+            -Method  POST `
+            -TimeoutSec 60 `
+            -ErrorAction Stop
+        Write-Host "  [OK] Load burst complete: $($result | ConvertTo-Json -Compress)" -ForegroundColor Green
+    } catch {
+        # Errors are expected - the bug causes the API to return 500s
+        Write-Host "  [OK] Errors returned from API - this is expected with the bug active." -ForegroundColor Green
+    }
 }
 
 # ── Step 5: Build deep-link URLs ──────────────────────────────────────────────

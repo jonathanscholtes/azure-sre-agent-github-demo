@@ -2,6 +2,9 @@
 
 Instructions for injecting a failure, generating errors, and observing the self-healing pipeline end to end.
 
+This guide is written as a companion reference for the article:
+[Beyond the Alert: Building Self-Healing Pipelines with Azure SRE Agent and GitHub Copilot](https://stochasticcoder.com/2026/04/29/beyond-the-alert-building-self-healing-pipelines-with-azure-sre-agent-and-github-copilot/)
+
 ---
 
 ## Step 1 — Inject the bug and generate errors
@@ -10,7 +13,7 @@ Instructions for injecting a failure, generating errors, and observing the self-
 .\tools\Start-SreDemo.ps1
 ```
 
-This patches a realistic bug into the order management API, rebuilds and redeploys the container image via ACR, waits for the new revision to become healthy, then fires a burst of 20 orders to flood Application Insights with errors. Direct portal deep-links are printed for every presenter step.
+This patches a realistic bug into the order-management API, rebuilds and redeploys the container image via ACR, waits for the new revision to become healthy, then fires a burst of 20 orders to flood Application Insights with errors. Direct portal deep-links are printed for each validation step.
 
 ```powershell
 # Inject a specific bug type with a larger load burst
@@ -30,22 +33,30 @@ This patches a realistic bug into the order management API, rebuilds and redeplo
 
 > **`-SkipDeploy`** patches the source file and writes `.chaos-state` but skips the ACR build. Commit and push to trigger the GitHub Actions workflow — useful for demonstrating the full CI/CD path.
 
+Typical timeline after load starts:
+
+- Application Insights failures appear in about 1-2 minutes
+- SRE Agent investigation and ticketing usually follow shortly after
+- Copilot PR timing depends on repository activity and queue depth
+
 ---
 
-## Step 2 — Walkthrough
+## Step 2 — Verify the closed-loop flow
 
-| Step | Where to look | What to show |
+Use this sequence to verify that each stage of the closed-loop flow is working correctly.
+
+| Step | Where to look | Expected signal |
 |------|---------------|-------------|
 | 1 | Application Insights → **Failures** blade | Error rate spike, exception type, stack trace |
 | 2 | [Azure SRE Agent](https://learn.microsoft.com/en-us/azure/sre-agent/overview?tabs=task) portal | Agent investigating the anomaly in real time |
-| 3 | Azure DevOps Boards | ADO WorkItem auto-created with telemetry deep-link |
+| 3 | Azure DevOps Boards | Azure DevOps work item auto-created with telemetry deep-link |
 | 4 | GitHub Issues | Issue created by SRE Agent, assigned to GitHub Copilot |
 | 5 | GitHub Pull Requests | Copilot's fix PR on a new branch |
 | 6 | Merge the PR | CI/CD pipeline triggers; error rate returns to zero |
 
 ---
 
-## Step 3 — Reset after the demo
+## Step 3 — Reset the environment
 
 ```powershell
 .\tools\Invoke-ChaosBug.ps1 -Revert `

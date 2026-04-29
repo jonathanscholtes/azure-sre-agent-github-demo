@@ -59,7 +59,7 @@ Copy-Item infra/terraform.tfvars.example infra/terraform.tfvars
 | `environment_name` | Yes | e.g. `dev`, `prod` — used in resource naming |
 | `project_name` | Yes | Short identifier used in resource naming |
 | `resource_token` | No | Unique suffix (auto-generated if omitted) |
-| `location` | Yes | Azure region — SRE Agent requires `eastus2`, `swedencentral`, `uksouth`, or `australiaeast` |
+| `location` | Yes | Azure region — SRE Agent requires `eastus2`, `swedencentral`, or `australiaeast` |
 | `enable_sre_agent` | No | Deploy the SRE Agent resource (default: `false`) |
 | `sre_agent_name` | No | Name of the SRE Agent resource (default: `sre-agent`) |
 | `sre_agent_access_level` | No | `High` or `Low` — controls RBAC granted to the agent (default: `High`) |
@@ -85,6 +85,8 @@ terraform apply tfplan
 ```
 
 To enable the SRE Agent, add `-var="enable_sre_agent=true"` to the plan command, or set `enable_sre_agent = true` in `terraform.tfvars`.
+
+When `enable_sre_agent = true`, use a supported region (`eastus2`, `swedencentral`, or `australiaeast`).
 
 ## Outputs
 

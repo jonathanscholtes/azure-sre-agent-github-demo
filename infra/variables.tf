@@ -39,7 +39,7 @@ variable "location" {
 # ── SRE Agent ────────────────────────────────────────────────────────────────
 
 variable "enable_sre_agent" {
-  description = "Deploy the Azure SRE Agent. Requires a location supported by the preview: eastus2, swedencentral, uksouth, australiaeast."
+  description = "Deploy the Azure SRE Agent. Requires a location supported by the preview: eastus2, swedencentral, australiaeast."
   type        = bool
   default     = false
 }

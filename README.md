@@ -2,6 +2,9 @@
 
 > Automated incident detection and remediation with Azure SRE Agent + GitHub Copilot
 
+For background and architecture context, see the companion article:
+[Beyond the Alert: Building Self-Healing Pipelines with Azure SRE Agent and GitHub Copilot](https://stochasticcoder.com/2026/04/29/beyond-the-alert-building-self-healing-pipelines-with-azure-sre-agent-and-github-copilot/)
+
 ![Self-Healing Application Pipeline](media/self-healing-pipeline.png)
 
 ---
@@ -20,7 +23,7 @@ This demo collapses that loop. [**Azure SRE Agent**](https://learn.microsoft.com
 |------|------|-------------|
 | 1 | Container Apps + Load Generator | Synthetic traffic hits a deliberately broken API |
 | 2 | Application Insights / Log Analytics | Exception rate spike and failure metrics detected |
-| 3 | Azure SRE Agent | Root-cause analysis; files an ADO WorkItem to track the incident |
+| 3 | Azure SRE Agent | Root-cause analysis; files an Azure DevOps work item to track the incident |
 | 4 | Azure SRE Agent | Creates a GitHub Issue with diagnostic context; assigns the Copilot coding agent |
 | 5 | GitHub Copilot Coding Agent | Reads the GitHub Issue, opens a fix PR on a new branch |
 | 6 | Human reviewer | Reviews the PR and merges — the human gate |
@@ -35,7 +38,7 @@ flowchart TD
     ACA["Azure Container Apps\n+ Load Generator Job\n(5-min cron, synthetic traffic)"]
     AI["Application Insights\nLog Analytics"]
     SRE["Azure SRE Agent\n(investigates, deduplicates)"]
-    ADO["Azure DevOps\nWorkItem\n(tracks incident)"]
+    ADO["Azure DevOps\nWork Item\n(tracks incident)"]
     GHI["GitHub Issue\n(assigned to Copilot)"]
     COP["GitHub Copilot Agent\n(creates branch + fix PR)"]
     HUM["Human Review + Merge\n— the human gate —"]
@@ -73,9 +76,9 @@ az login
 .\deploy.ps1 -Subscription "<subscription-name-or-id>" -SetupGitHub
 ```
 
-→ [Full deployment guide](docs/deployment.md) — infrastructure, GitHub OIDC, SRE Agent portal configuration, and branch protection setup.
+→ [Full deployment guide](docs/deployment.md) — infrastructure, GitHub OIDC, SRE Agent portal configuration, branch protection setup, and troubleshooting tips.
 
-→ [Walkthrough](docs/walkthrough.md) — injecting bugs, walkthrough, and reset instructions.
+→ [Walkthrough](docs/walkthrough.md) — bug injection, live demo flow, and reset instructions.
 
 ---
 

@@ -68,3 +68,47 @@ variable "sre_agent_target_resource_groups" {
   }))
   default = []
 }
+
+# ── Alerting ────────────────────────────────────────────────────────────────
+
+variable "enable_alerts" {
+  description = "Provision the action group and alert rules in the monitor module."
+  type        = bool
+  default     = true
+}
+
+variable "alert_email_receivers" {
+  description = "Email receivers attached to the action group."
+  type = list(object({
+    name          = string
+    email_address = string
+  }))
+  default = []
+}
+
+variable "alert_webhook_receivers" {
+  description = "Webhook receivers attached to the action group (PagerDuty, ServiceNow, Teams connector, etc.)."
+  type = list(object({
+    name        = string
+    service_uri = string
+  }))
+  default = []
+}
+
+variable "failed_requests_threshold" {
+  description = "Number of failed requests over a 5-minute window that fires the failure-rate alert. Default 0 fits the demo's once-per-5-min load generator (any failure fires)."
+  type        = number
+  default     = 0
+}
+
+variable "response_time_threshold_ms" {
+  description = "Average request duration (ms) over a 5-minute window that fires the response-time alert."
+  type        = number
+  default     = 2000
+}
+
+variable "exception_spike_threshold" {
+  description = "Exception count over a 5-minute window per type that fires the exception-spike alert. Default 0 fits the demo's once-per-5-min load generator."
+  type        = number
+  default     = 0
+}

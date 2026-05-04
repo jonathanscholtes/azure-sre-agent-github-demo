@@ -58,6 +58,13 @@ module "monitor" {
   log_analytics_name        = "log-${var.project_name}-${var.environment_name}-${local.resource_token}"
   application_insights_name = "appi-${var.project_name}-${var.environment_name}-${local.resource_token}"
 
+  enable_alerts              = var.enable_alerts
+  alert_email_receivers      = var.alert_email_receivers
+  alert_webhook_receivers    = var.alert_webhook_receivers
+  failed_requests_threshold  = var.failed_requests_threshold
+  response_time_threshold_ms = var.response_time_threshold_ms
+  exception_spike_threshold  = var.exception_spike_threshold
+
   depends_on = [module.security]
 }
 

@@ -156,12 +156,21 @@ if ($Action -eq "output") {
     exit 0
 }
 
-# --- Generate tfvars ---
-New-TerraformVarsFile `
-    -SubscriptionId $subscriptionId `
-    -Location       $Location `
-    -Environment    $Environment `
-    -OutputPath     $infraDir
+# --- Generate tfvars (fresh install only) ---
+$tfvarsPath = Join-Path $infraDir "terraform.tfvars"
+$existingToken = if (Test-Path $tfvarsPath) {
+    (Get-Content $tfvarsPath | Select-String 'resource_token\s*=\s*"([^"]+)"').Matches[0].Groups[1].Value
+} else { $null }
+
+if (-not $existingToken) {
+    New-TerraformVarsFile `
+        -SubscriptionId $subscriptionId `
+        -Location       $Location `
+        -Environment    $Environment `
+        -OutputPath     $infraDir
+} else {
+    Write-Host "Existing terraform.tfvars found (token: $existingToken) - skipping regeneration." -ForegroundColor DarkGray
+}
 
 # --- Init ---
 if ($Action -in @("init", "all")) {

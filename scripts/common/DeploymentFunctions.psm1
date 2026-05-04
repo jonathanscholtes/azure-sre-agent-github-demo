@@ -122,11 +122,12 @@ function Get-RandomAlphaNumeric {
 function Get-ResourceToken {
     <#
     .SYNOPSIS
-        Returns a deterministic 8-character token derived from the subscription ID.
+        Returns a unique 8-character token derived from the subscription ID and current timestamp.
     .DESCRIPTION
         Seeds the MD5-based Get-RandomAlphaNumeric function with the subscription ID
-        so the token is stable across re-runs for a given subscription but unique
-        enough across subscriptions to avoid Azure naming collisions.
+        combined with a timestamp so each deployment gets a unique token while still
+        being stable if terraform.tfvars already contains a token (the vars file is
+        not regenerated on re-runs).
     #>
     param (
         [Parameter(Mandatory=$true)]
@@ -135,7 +136,8 @@ function Get-ResourceToken {
         [int]$Length = 8
     )
 
-    return Get-RandomAlphaNumeric -Length $Length -Seed $SubscriptionId
+    $seed = "$SubscriptionId-$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())"
+    return Get-RandomAlphaNumeric -Length $Length -Seed $seed
 }
 
 function New-SecurePassword {

@@ -113,6 +113,8 @@ After `terraform apply` completes:
 3. Select the target Azure DevOps project/repository context for this demo
 4. Save — when incidents match the enabled response plan, the agent automatically creates/updates Azure DevOps work items using this connector
 
+> **Known issue — PAT authentication:** When using a Personal Access Token, the connector may fall back to Managed Identity, resulting in error `TF401444`. If this occurs, instruct the SRE Agent in chat to call the Azure DevOps REST API directly using the configured PAT.
+
 ---
 
 ## Step 6 — Add GitHub Issues as an automated destination
@@ -129,11 +131,51 @@ In the same or a parallel workflow in the SRE Agent portal:
 
 > Both the Azure DevOps work item and the GitHub Issue come from the same SRE Agent investigation. Azure DevOps tracks the incident operationally; the GitHub Issue is the work item Copilot acts on.
 
+## Step 7 - SRE Chat to Configure Self-Healing Pipeline
 
+You can use the following prompt with the SRE Chat (New Chat thread) to ensure the instructions (ReadMe) are ready for your self-healing pipeline with Azure DevOps and GitHub Copilot. Please complete the steps asked by the SRE agent to complete set-up
+
+```
+For every incident:
+1. ALWAYS create (or reuse if existing) an Azure DevOps Issue.
+   - Title: [INC-{id}] {summary}
+   - Include full incident details
+   - Ensure no duplicates (key = Incident ID)
+
+2. Determine remediation type:
+   - Infrastructure / configuration issue
+   - Code defect requiring repository change
+
+3. If Infrastructure / Configuration:
+   - Execute or recommend remediation (e.g., restart, scale, config update, rollback, IaC change)
+   - Record actions taken and outcome in the DevOps Issue
+   - Stop
+
+4. If Code Fix Required:
+   - Create (or reuse) a GitHub Issue
+     - Link the Azure DevOps Issue
+     - Include root cause, repro steps, expected fix
+     - Assign to Copilot
+     - Label: incident, bug
+
+   - Trigger PR workflow on dev branch:
+     - Copilot proposes fix + tests
+     - PR must:
+       - Pass all existing CI checks
+       - Include or update tests validating the fix
+       - Reference both the GitHub Issue and DevOps Issue
+
+5. Ensure all artifacts are linked (Incident ↔ DevOps ↔ GitHub ↔ PR when applicable)
+
+Rules:
+- Never skip DevOps issue creation
+- Never create duplicates
+- Prefer reuse over new artifacts
+```
 
 ---
 
-## Step 7 — Enable branch protection on `main`
+## Step 8 — Enable branch protection on `main`
 
 This enforces the human gate — Copilot's fix PR cannot merge without a review.
 

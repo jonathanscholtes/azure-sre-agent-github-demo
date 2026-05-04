@@ -14,14 +14,9 @@ terraform {
 data "azurerm_client_config" "current" {}
 
 locals {
-  # Roles assigned to the SRE agent identity on the deployment resource group
-  deployment_rg_roles = var.access_level == "High" ? [
-    "Log Analytics Reader",
-    "Reader",
-    "Contributor",
-  ] : ["Log Analytics Reader"]
-
-  # Roles assigned to the SRE agent identity on each target resource group
+  # Roles assigned to the SRE agent identity on each target resource group.
+  # The deployment resource group is always included in var.target_resource_groups
+  # by the root module, so these roles cover it as well.
   target_rg_roles = var.access_level == "High" ? [
     "Log Analytics Reader",
     "Reader",
@@ -50,17 +45,7 @@ resource "azurerm_user_assigned_identity" "sre_agent" {
   resource_group_name = var.resource_group_name
 }
 
-# Role assignments on the deployment resource group
-resource "azurerm_role_assignment" "deployment_rg" {
-  for_each = toset(local.deployment_rg_roles)
-
-  scope                = "/subscriptions/${var.subscription_id}/resourceGroups/${var.resource_group_name}"
-  role_definition_name = each.value
-  principal_id         = azurerm_user_assigned_identity.sre_agent.principal_id
-  principal_type       = "ServicePrincipal"
-}
-
-# Role assignments on each target resource group
+# Role assignments on each target resource group (includes the deployment RG)
 resource "azurerm_role_assignment" "target_rg" {
   for_each = local.target_rg_role_assignments
 
@@ -109,7 +94,6 @@ resource "azapi_resource" "sre_agent" {
   schema_validation_enabled = false
 
   depends_on = [
-    azurerm_role_assignment.deployment_rg,
     azurerm_role_assignment.target_rg,
   ]
 }

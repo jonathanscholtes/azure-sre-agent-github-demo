@@ -29,3 +29,24 @@ jobs:
 
       - name: Lint apps/loadgen
         run: ruff check apps/loadgen
+
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        working-directory: apps/api
+        run: pip install -r requirements.txt
+
+      - name: Run unit tests
+        working-directory: apps/api
+        run: pytest tests/ -v

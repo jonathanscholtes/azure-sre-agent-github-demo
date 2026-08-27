@@ -35,12 +35,13 @@ class CreateOrderRequest(BaseModel):
 
 def build_line_item_summary(item: dict) -> dict:
     """Compute per-item totals and effective unit cost for invoice reconciliation."""
-    total = item["unit_price"] * item["quantity"]
+    unit_price = item.get("unit_price", item.get("price"))
+    total = unit_price * item["quantity"]
     unit_cost = total / item["quantity"] if item["quantity"] != 0 else 0.0
     return {
         "sku": item["sku"],
         "name": item["name"],
-        "unit_price": item["unit_price"],
+        "unit_price": unit_price,
         "quantity": item["quantity"],
         "line_total": round(total, 2),
         "unit_cost": round(unit_cost, 2),
